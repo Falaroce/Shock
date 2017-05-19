@@ -862,6 +862,7 @@ int main(void)
     saadc_init();
 		saadc_sampling_event_enable();	
     
+		int caca = 0;
 
     //printf("\r\nUART Start!\r\n");
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST); 
