@@ -204,17 +204,10 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 				trigger_value = -1;
 				m_adc_evt_counter = 0;
 			
+				//Display the GREEN led
 				nrf_gpio_pin_set(12);
 				nrf_gpio_pin_clear(11);
     }
-		
-		if(strcmp(uart_string,"B") == 0 )
-    {
-    }
-		
-		
-		
-		
 }
 /**@snippet [Handling the data received over BLE] */
 
@@ -392,6 +385,7 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     ble_advertising_on_ble_evt(p_ble_evt);
     bsp_btn_ble_on_ble_evt(p_ble_evt);
 	
+		//Bluetooth packet sent event 
 		if(p_ble_evt->header.evt_id == BLE_EVT_TX_COMPLETE)
 		{	
 				uint8_t buf_nus[3];
@@ -403,12 +397,14 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 				}
 			
 				count_tx++;
-			
+				
+				//If MAX_DATA packets has been sent
 				if(count_tx == MAX_DATA)
 				{
 						count_tx = 0;
 						count_packet++;
-					
+						
+						//Send the next MAX_DATA packets
 						sendData(data,MAX_DATA*count_packet);
 				}
 		}
@@ -642,7 +638,9 @@ void saadc_sampling_event_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-
+/**
+* @brief Check if the sensors are in neutral state
+*/
 bool isNeutralState(uint8_t adc_value_1,uint8_t adc_value_2, uint8_t adc_value_3)
 {
 		if(m_adc_evt_counter == 0)
@@ -653,8 +651,6 @@ bool isNeutralState(uint8_t adc_value_1,uint8_t adc_value_2, uint8_t adc_value_3
 		{
 			return	m_adc_evt_counter == LIMIT_VALUE;
 		}
-	
-		//return m_adc_evt_counter == 0 || m_adc_evt_counter == LIMIT_VALUE; 
 }
 
 void saadc_callback(nrf_drv_saadc_evt_t const * p_event)
@@ -669,41 +665,19 @@ void saadc_callback(nrf_drv_saadc_evt_t const * p_event)
         // set buffers
         err_code = nrf_drv_saadc_buffer_convert(p_event->data.done.p_buffer, SAADC_SAMPLES_IN_BUFFER);
         APP_ERROR_CHECK(err_code);
-						
-        // print samples on hardware UART and parse data for BLE transmission
-        //printf("ADC event number: %d\r\n",(int)m_adc_evt_counter);
-			
+				
+				
 				if(!ADC_enabled)
 					return;
 				
+				//Scaling the 3 values between Y_MIN and Y_MAX (eg. 0-255) 
 				adc_value_1 = (-p_event->data.done.p_buffer[0]+Y_MAX)*CONVERSION_SIZE/(-Y_MIN+Y_MAX);
 				adc_value_2 = (-p_event->data.done.p_buffer[1]+Y_MAX)*CONVERSION_SIZE/(-Y_MIN+Y_MAX);
 				adc_value_3 = (-p_event->data.done.p_buffer[2]+Y_MAX)*CONVERSION_SIZE/(-Y_MIN+Y_MAX);
 			
 				bool neutralState = isNeutralState(adc_value_1,adc_value_2,adc_value_3);
 			
-				if(neutralState && ADC_recording)
-				{
-						//printf("Stop record : %d\n",m_adc_evt_counter);
-					
-						//Disable sampling
-						//saadc_sampling_event_disable();
-						ADC_recording = false;
-						ADC_enabled = false;
-						send = true;
-						
-						count_packet = 0;
-						count_tx = 0;
-					
-						nrf_gpio_pin_set(11);
-						nrf_gpio_pin_clear(12);
-					
-						//Send data[2000][3]
-						sendData(data,0);
-						
-						return;
-				}
-				
+				//Recording state 
 				if(!neutralState)
 				{
 						ADC_recording = true;
@@ -717,11 +691,27 @@ void saadc_callback(nrf_drv_saadc_evt_t const * p_event)
 						data[m_adc_evt_counter][1] = adc_value_2;
 						data[m_adc_evt_counter][2] = adc_value_3;
 					
-						//printf("count : %d\n",m_adc_evt_counter);
 						m_adc_evt_counter++;
 				}  
-				//m_adc_evt_counter++;
 				
+				//End of recording, send the first packet 
+				if(neutralState && ADC_recording)
+				{
+						ADC_recording = false;
+						ADC_enabled = false;
+						send = true;
+						
+						count_packet = 0;
+						count_tx = 0;
+						
+						//Display the RED led
+						nrf_gpio_pin_set(11);
+						nrf_gpio_pin_clear(12);
+					
+						sendData(data,0);
+						
+						return;
+				}
     }
 }
 			
@@ -746,12 +736,7 @@ void saadc_init(void)
     nrf_saadc_channel_config_t channel_2_config =
         NRF_DRV_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_AIN2);
     channel_2_config.gain = NRF_SAADC_GAIN1_4;
-    channel_2_config.reference = NRF_SAADC_REFERENCE_VDD4;
-	
-    /*nrf_saadc_channel_config_t channel_3_config =
-        NRF_DRV_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_AIN3);
-    channel_3_config.gain = NRF_SAADC_GAIN1_4;
-    channel_3_config.reference = NRF_SAADC_REFERENCE_VDD4;	*/			
+    channel_2_config.reference = NRF_SAADC_REFERENCE_VDD4;			
 	
     err_code = nrf_drv_saadc_init(&saadc_config, saadc_callback);
     APP_ERROR_CHECK(err_code);
@@ -762,8 +747,6 @@ void saadc_init(void)
     APP_ERROR_CHECK(err_code);
     err_code = nrf_drv_saadc_channel_init(2, &channel_2_config);
     APP_ERROR_CHECK(err_code);
-    /*err_code = nrf_drv_saadc_channel_init(3, &channel_3_config);
-    APP_ERROR_CHECK(err_code);	*/
 
     err_code = nrf_drv_saadc_buffer_convert(m_buffer_pool[0],SAADC_SAMPLES_IN_BUFFER);
     APP_ERROR_CHECK(err_code);   
@@ -773,18 +756,15 @@ void saadc_init(void)
 
 void sendData(uint8_t data[2000][3], int k)
 {
-		//printf("SendData\n");
 		uint8_t buf_nus[4];
 		int i,j;
 	
 		if(send)
 		{
-				//printf("Send packet : %d - %d\n",k,k+MAX_DATA);
 				for(i=k;i<k+MAX_DATA;i++)
 				{
 						if(i >= LIMIT_VALUE-1)
 						{
-							//printf("break");
 							send=false;
 							break;
 						}
@@ -800,16 +780,13 @@ void sendData(uint8_t data[2000][3], int k)
 		}
 		
 		if(!send)
-		{
-				//printf("Stop send : %d\n",count_tx);
-					
+		{	
 				count_packet=0;
 				count_tx=0;
 				
 				clearData(data);
 							
-				//Send "Z" => End of data
-				//printf("Send Z\n");
+				//Send "End of data" packet
 				int j;
 				for(j=0;j<3;j++)
 				{
@@ -841,9 +818,11 @@ int main(void)
 	
 		nrf_gpio_cfg_output(12);
 		nrf_gpio_cfg_output(11);
-	  nrf_gpio_pin_set(11);
-				nrf_gpio_pin_set(12);
-    uint32_t err_code;
+	  
+		nrf_gpio_pin_set(11);
+		nrf_gpio_pin_set(12);
+    
+		uint32_t err_code;
     bool erase_bonds;
 
     // Initialize.
@@ -862,8 +841,6 @@ int main(void)
     saadc_init();
 		saadc_sampling_event_enable();	
     
-
-    //printf("\r\nUART Start!\r\n");
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST); 
     APP_ERROR_CHECK(err_code);
     

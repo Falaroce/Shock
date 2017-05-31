@@ -1,7 +1,20 @@
-ble_app_uart__saadc_timer_driven__scan_mode example
+Shock_nrf52
 ==================
+ 
+ Ce projet reprend celui fournis par Nordic Semiconductor "ble_app_uart__saadc_timer_driven__scan_mode" en ajoutant les fonctionnalités spécifiques pour le Shock d'Innovalab. 
+ 
+ - Echantillonnage avec un ADC
+ - Communication entre Android et nRF52 en BLE/UART
+ - Gestion des envois bluetooth par paquets
+ 
+  Les seules modifications majeures effectuées sont dans le fichier main.c, d'autres fichiers ont été modifiés mais uniquement pour des paramètrages divers. 
 
- This project contains a code example that shows nrf52 SAADC scan mode and how to integrate SAADC with softdevice.
+La version compatible avec notre carte nRF52 est pca10040/s132/arm5_no_packs/ble_app_uart_s132_pca10040.uvprojx
+
+Version originale de Nordic Semiconductor
+==================
+ 
+This project contains a code example that shows nrf52 SAADC scan mode and how to integrate SAADC with softdevice.
  
 Requirements
 ------------
@@ -9,7 +22,8 @@ Requirements
 - nRF52-DK
 - Softdevice S132 2.0.x
 
-To compile it, clone the repository in the \nRF5_SDK_11.0.0_89a8197\examples\peripheral\ folder.  If you download the zip, place the ble_app_uart__saadc_timer_driven__scan_mode folder into the \nRF5_SDK_11.0.0_89a8197\examples\peripheral\ folder.
+To compile it, clone the repository in the \nRF5_SDK_11.0.0_89a8197\examples\peripheral\ folder.  
+
 
 Documentation
 -----------------
